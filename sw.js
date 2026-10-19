@@ -1,4 +1,4 @@
-const CACHE = "russky-v3";
+const CACHE = "russky-v4";
 const ASSETS = ["./", "./index.html", "./data.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {

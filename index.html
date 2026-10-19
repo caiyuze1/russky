@@ -133,6 +133,26 @@
   .sheet{position:fixed;inset:0;background:rgba(20,22,18,.35);z-index:80;display:flex;align-items:flex-end;justify-content:center;}
   .sheet .in{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 20px calc(22px + env(safe-area-inset-bottom));max-height:86dvh;overflow:auto;}
   .sheet .x{float:right;background:none;border:0;font-size:20px;color:var(--mut);cursor:pointer;line-height:1;}
+  /* —— 听写 —— */
+  .dicbar{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);letter-spacing:.06em;margin-bottom:10px;}
+  .dicplay{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 20px;border-radius:18px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13px;cursor:pointer;}
+  .dicplay:active{transform:scale(.985);}
+  .dicplay svg{stroke:var(--green);fill:none;stroke-width:1.6;}
+  .dicacts{display:flex;gap:8px;margin:10px 0 4px;}
+  .ghost.sm{padding:9px 10px;font-size:12.5px;flex:1;margin:0;height:auto;}
+  .dicinput{width:100%;box-sizing:border-box;padding:14px 16px;border-radius:14px;border:1px solid var(--line);
+    background:#fff;font:inherit;font-size:21px;letter-spacing:.03em;margin:14px 0 10px;}
+  .dicinput:focus{outline:none;border-color:var(--green);}
+  .dicres{border-radius:16px;padding:14px 16px;margin:12px 0 10px;border:1px solid var(--line);background:#fff;}
+  .dicres.ok{border-color:#bcd8c6;background:#f4faf6;}
+  .dicres.bad{border-color:#e8c6bb;background:#fdf7f4;}
+  .dicres .rst{font-size:13px;font-weight:600;margin:0 0 6px;}
+  .dicres.ok .rst{color:var(--green);}
+  .dicres.bad .rst{color:var(--red);}
+  .dicres .ans{font-size:26px;margin:2px 0;letter-spacing:.02em;}
+  .dicres .zh{font-size:13px;color:var(--mut);margin:2px 0 0;}
+  .dicres .cmpline{font-size:15px;margin:9px 0 0;color:#4a4a44;}
 </style>
 </head>
 <body>
@@ -142,6 +162,7 @@
   <nav><div class="in">
     <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>今天</button>
     <button data-tab="dict"><svg viewBox="0 0 24 24"><path d="M4 5h7v15H4z"/><path d="M13 5h7v15h-7z"/></svg>词库</button>
+    <button data-tab="dictation"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M8 8v5M16 8v5M4 11v1M20 11v1"/><path d="M9 19h6"/></svg>听写</button>
     <button data-tab="gram"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>语法</button>
     <button data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg>我的</button>
   </div></nav>
@@ -208,13 +229,13 @@ if ('speechSynthesis' in window){
   speechSynthesis.onvoiceschanged = ()=>{ voicesReady = true; };
   pickRuVoice();
 }
-function speak(text){
+function speak(text, rate){
   if(!('speechSynthesis' in window)) return toast("这个浏览器不支持语音朗读");
   if(!S.settings.tts) return;
   const clean = String(text).replace(/\u0301/g,"");
   const u = new SpeechSynthesisUtterance(clean);
   const v = pickRuVoice();
-  u.lang = "ru-RU"; u.rate = .88;
+  u.lang = "ru-RU"; u.rate = rate || .88;
   if(v) u.voice = v;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
   if(!v) toast("已用系统默认语音；iPhone 自带俄语，Windows 需先添加俄语语音包");
@@ -270,6 +291,162 @@ function next(){
   render();
 }
 
+/* ============ 听写 ============ */
+let dic = null;
+function normRu(x){
+  return String(x==null?"":x).toLowerCase()
+    .replace(/\u0301/g,"").replace(/ё/g,"е")
+    .replace(/[.,!?;:()"'«»—–]/g," ").replace(/\s+/g," ").trim();
+}
+function startDictation(lesson, n){
+  const now = Date.now();
+  // 听写只出单词：带空格/标点/括号的短语不进来（写整句反而练不到拼写）
+  const clean = w => w.ru && !/[\s()?!,.:;«»—–]/.test(w.ru);
+  let pool = allWords().filter(w=>clean(w) && (!lesson || w.lesson===lesson));
+  pool.sort((a,b)=>{
+    const ra=S.srs[a.id]||{}, rb=S.srs[b.id]||{};
+    const sa=(!ra.due||ra.due<=now)?0:1, sb=(!rb.due||rb.due<=now)?0:1;
+    if(sa!==sb) return sa-sb;
+    const la=ra.lapses||0, lb=rb.lapses||0;
+    if(la!==lb) return lb-la;
+    return Math.random()-.5;
+  });
+  pool = pool.slice(0, n||20);
+  if(!pool.length) return toast("这里没有可听写的词");
+  dic = {queue:pool.map(w=>w.id), i:0, ok:0, bad:0, shown:false, counted:false, last:null, hint:false, rate:.85, lesson:lesson||0};
+  go("dictation");
+  setTimeout(()=>{ dicSay(); const el=document.getElementById("dicInput"); if(el) el.focus(); }, 400);
+}
+function dicWord(){ return dic ? byId(dic.queue[dic.i]) : null; }
+function dicSay(){ const w=dicWord(); if(w) speak(w.ru, dic.rate); }
+function dicCheck(){
+  if(!dic || dic.shown) return;
+  const w=dicWord(), el=document.getElementById("dicInput");
+  const val = el ? el.value : "";
+  if(!val.trim()) return toast("先写出来再提交");
+  const ok = normRu(val) === normRu(w.ru);
+  dic.shown = true; dic.last = {val:val, ok:ok};
+  if(!dic.counted){ dicRate(ok); dic.counted = true; }
+  render();
+}
+function dicRate(ok){
+  const w=dicWord(); if(!w) return;
+  const r=srsOf(w.id); r.reps++;
+  if(ok){
+    r.ease=Math.min(3.2,r.ease+.02);
+    r.ivl = r.ivl===0?1:(r.ivl===1?3:Math.round(r.ivl*r.ease));
+    r.due=startOfDay(Date.now())+r.ivl*DAY; r.ok++; dic.ok++;
+  } else {
+    r.lapses=(r.lapses||0)+1; r.ease=Math.max(1.3,r.ease-.2); r.ivl=0; r.due=Date.now(); dic.bad++;
+  }
+  S.history.push({id:w.id, tags:(w.tags||[]).concat(["听写"]), ok:ok, t:Date.now()});
+  if(S.history.length>3000) S.history=S.history.slice(-2500);
+  const k=todayKey(); S.days[k]=(S.days[k]||0)+1;
+  save();
+}
+function dicSkip(){
+  if(!dic) return;
+  if(!dic.shown){
+    dic.shown = true; dic.last = {val:"", ok:false};
+    if(!dic.counted){ dicRate(false); dic.counted = true; }
+    return render();
+  }
+  dicNext();
+}
+function dicNext(){
+  if(!dic) return;
+  dic.i++; dic.shown=false; dic.counted=false; dic.last=null; dic.hint=false;
+  if(dic.i >= dic.queue.length){
+    const ok=dic.ok, bad=dic.bad, n=dic.queue.length; dic=null;
+    go("home"); toast("听写完成："+n+" 个，对 "+ok+" · 错 "+bad, 3600); return;
+  }
+  render();
+  setTimeout(()=>{ dicSay(); const el=document.getElementById("dicInput"); if(el) el.focus(); }, 320);
+}
+/* 逐字母对齐（LCS）：多写的划掉，漏掉的在答案里加粗下划线 */
+function lcsMark(a,b){
+  const n=a.length, m=b.length;
+  const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--)
+    dp[i][j] = a[i]===b[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const mine=[], right=[]; let i=0, j=0;
+  while(i<n && j<m){
+    if(a[i]===b[j]){ mine.push([a[i],"ok"]); right.push([b[j],"ok"]); i++; j++; }
+    else if(dp[i+1][j] >= dp[i][j+1]){ mine.push([a[i],"extra"]); i++; }
+    else { right.push([b[j],"miss"]); j++; }
+  }
+  while(i<n){ mine.push([a[i],"extra"]); i++; }
+  while(j<m){ right.push([b[j],"miss"]); j++; }
+  return {mine:mine, right:right};
+}
+function diffHtml(val, answer){
+  const A=[].concat(...normRu(val)), B=[].concat(...normRu(answer));
+  const r=lcsMark(A,B);
+  const hi = arr => arr.map(function(p){
+    const ch=p[0], k=p[1];
+    if(k==="extra") return '<i style="color:#b4452f;text-decoration:line-through">'+esc(ch)+'</i>';
+    if(k==="miss")  return '<i style="color:#2F5D46;font-weight:700;text-decoration:underline">'+esc(ch)+'</i>';
+    return esc(ch);
+  }).join("");
+  return {mine:hi(r.mine), right:hi(r.right)};
+}
+function ruVoiceHint(){
+  const v = pickRuVoice();
+  return v ? "当前语音：" + v.name
+           : "没找到俄语语音包：iPhone 设置 → 辅助功能 → 朗读内容 → 声音 → 俄语，先下载一个";
+}
+function viewDictation(){
+  document.getElementById("htitle").textContent="Диктант";
+  document.getElementById("hsub").textContent = dic ? (dic.i+1)+" / "+dic.queue.length : "";
+  if(!dic){
+    return '<p class="kicker">Диктант · 听写</p>'
+      + '<p class="h1">听俄语，把词写出来</p>'
+      + '<p class="exz" style="margin-top:8px">播放一个词 → 你在框里写 → 自动判对错。写错的字母会被标出来：多写的划掉，漏掉的下划线。</p>'
+      + '<button class="btn" id="dicStartAll" style="margin-top:18px">随机 20 个 · 全部词库</button>'
+      + '<button class="ghost" id="dicStartPick">按课次听写</button>'
+      + '<p class="hintline" style="margin-top:14px;text-align:left">' + ruVoiceHint() + '</p>';
+  }
+  const w = dicWord(); if(!w){ dic=null; return viewDictation(); }
+  const res = (dic.shown && dic.last) ? diffHtml(dic.last.val, w.ru) : null;
+  return '<div class="dicbar"><span>'+(dic.i+1)+' / '+dic.queue.length+'</span><span>对 '+dic.ok+' · 错 '+dic.bad+'</span></div>'
+    + '<button class="dicplay" id="dicPlay"><svg viewBox="0 0 24 24" width="34" height="34"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8.5a5 5 0 010 7"/></svg><span>再听一次</span></button>'
+    + '<div class="dicacts"><button class="ghost sm" id="dicSlow">慢速</button><button class="ghost sm" id="dicHint">提示</button><button class="ghost sm" id="dicSkip">跳过</button></div>'
+    + (dic.hint ? '<p class="hintline">'+esc(w.ru.charAt(0))+'…　'+esc(w.zh)+'　（'+[...w.ru.replace(/\u0301/g,"")].length+' 个字母）</p>' : '')
+    + (dic.shown
+        ? '<div class="dicres '+(dic.last.ok?"ok":"bad")+'">'
+          + '<p class="rst">'+(dic.last.ok ? "✓ 写对了" : "✗ 差一点")+'</p>'
+          + '<p class="ans">'+esc(w.ru)+'</p>'
+          + '<p class="zh">'+esc(w.zh)+'</p>'
+          + (dic.last.ok ? '' : (res ? '<p class="cmpline">你写的：'+res.mine+'</p><p class="cmpline">正确的：'+res.right+'</p>' : ''))
+          + '</div>'
+          + '<button class="btn" id="dicNext">下一个 →</button>'
+        : '<input id="dicInput" class="dicinput" type="text" lang="ru" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="写出刚才听到的词">'
+          + '<button class="btn" id="dicSubmit">提交</button>'
+          + '<p class="hintline" style="margin-top:10px">手机要先在键盘设置里加俄语键盘；ё 打不出来写 е 也算对</p>');
+}
+function openDicSheet(){
+  const lessons = [].concat(new Set(allWords().map(w=>w.lesson).filter(Boolean))).sort((a,b)=>a-b);
+  const now = Date.now();
+  const rows = lessons.map(function(n){
+    const inL = allWords().filter(w=>w.lesson===n);
+    const bad = inL.filter(w=>(S.srs[w.id]||{}).lapses>0).length;
+    return '<div class="item" data-dl="'+n+'"><span class="w" style="min-width:52px">第'+n+'课</span>'
+      + '<span class="z">共 '+inL.length+' 词'+(bad?' · 错过 '+bad:'')+'</span>'
+      + '<span style="font-size:11px;color:var(--mut)">听写 →</span></div>';
+  }).join("");
+  const box = document.createElement('div'); box.className='sheet';
+  box.innerHTML = '<div class="in"><button class="x" data-close>×</button>'
+    + '<p class="wtag">听写</p><p class="h1" style="font-size:18px;margin-top:6px">选一课听写</p>'
+    + '<p class="exz" style="margin-top:6px">到期和错得多的词优先出，每轮最多 20 个</p>'
+    + '<div class="list" style="margin-top:10px">'+rows+'</div></div>';
+  box.addEventListener('click', function(e){
+    if(e.target===box || e.target.hasAttribute('data-close')) return box.remove();
+    const it = e.target.closest('[data-dl]');
+    if(it){ const n=+it.dataset.dl; box.remove(); startDictation(n, 20); }
+  });
+  document.body.appendChild(box);
+}
+
 /* ============ 渲染：今天 ============ */
 function viewHome(){
   const due = dueList().length, nw = Math.min(newList().length, S.settings.newPerDay);
@@ -294,6 +471,7 @@ function viewHome(){
       <div class="row" data-go="new"><span class="dot"></span><span class="nm">新词<em class="em">· 内置 + 导入</em></span><span class="go">${nw} →</span></div>
       <div class="row" data-go="due"><span class="dot"></span><span class="nm">到期复习<em class="em">· 间隔重复</em></span><span class="go">${due} →</span></div>
       <div class="row" data-go="lesson"><span class="dot"></span><span class="nm">按课次练<em class="em">· 只做第 N 课</em></span><span class="go">选课 →</span></div>
+      <div class="row" data-go="dictation"><span class="dot"></span><span class="nm">听写<em class="em">· 听俄语写字母</em></span><span class="go">开练 →</span></div>
       <div class="row" data-go="gram"><span class="dot"></span><span class="nm">语法训练<em class="em">· 六格 / 变位</em></span><span class="go">查看 →</span></div>
     </div>`;
 }
@@ -577,7 +755,7 @@ function parseList(txt){
 }
 
 /* ============ 路由 ============ */
-const TITLES = {home:"Сегодня", dict:"Словарь", gram:"Грамматика", me:"Профиль", review:"Тренировка"};
+const TITLES = {home:"Сегодня", dict:"Словарь", dictation:"Диктант", gram:"Грамматика", me:"Профиль", review:"Тренировка"};
 function go(t){ tab = t; render(); window.scrollTo(0,0); }
 function render(){
   const v = document.getElementById('view');
@@ -585,12 +763,13 @@ function render(){
   else {
     if(tab==="home") v.innerHTML = viewHome();
     else if(tab==="dict") v.innerHTML = viewDict();
+    else if(tab==="dictation") v.innerHTML = viewDictation();
     else if(tab==="gram") v.innerHTML = viewGram();
     else if(tab==="me") v.innerHTML = viewMe();
     if(tab!=="review"){ document.getElementById('htitle').textContent = TITLES[tab]||"Русский"; }
   }
   if(tab==="review"){ document.getElementById('htitle').textContent = "Тренировка"; document.getElementById('hsub').textContent = `${(sess? (sess.i+1):1)} / ${(sess?sess.total:0)}`; }
-  else { const h={home:"Сегодня",dict:"Словарь",gram:"Грамматика",me:"Профиль"}[tab]; document.getElementById('htitle').textContent=h;
+  else { const h={home:"Сегодня",dict:"Словарь",dictation:"Диктант",gram:"Грамматика",me:"Профиль"}[tab]; document.getElementById('htitle').textContent=h;
     document.getElementById('hsub').textContent = tab==="home" ? new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric'}) : (tab==="dict" ? allWords().length+" 词" : ""); }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===(tab==="review"?"home":tab)));
   bind();
@@ -601,6 +780,7 @@ function bind(){
     const g=r.dataset.go;
     if(g==="gram") return go("gram");
     if(g==="lesson") return openLessonSheet();
+    if(g==="dictation") return go("dictation");
     startSession(g);
   }));
   document.getElementById('reveal')?.addEventListener('click', ()=>{ sess.revealed=true; render(); });
@@ -621,6 +801,25 @@ function bind(){
   document.querySelectorAll('.list .item').forEach(it=>it.addEventListener('click', ()=>openWord(it.dataset.w)));
   document.getElementById('importBtn')?.addEventListener('click', openImport);
   document.getElementById('trainLesson')?.addEventListener('click', ()=>startSession("all", dictLesson));
+
+  /* —— 听写 —— */
+  document.getElementById('dicStartAll')?.addEventListener('click', ()=>startDictation(0, 20));
+  document.getElementById('dicStartPick')?.addEventListener('click', openDicSheet);
+  document.getElementById('dicPlay')?.addEventListener('click', dicSay);
+  document.getElementById('dicSlow')?.addEventListener('click', ()=>{
+    if(!dic) return;
+    const fast = dic.rate > .75;
+    dic.rate = fast ? .6 : .85;
+    dicSay(); toast(fast ? "慢速 0.6×" : "正常 0.85×");
+  });
+  document.getElementById('dicHint')?.addEventListener('click', ()=>{ if(dic){ dic.hint = true; render(); } });
+  document.getElementById('dicSkip')?.addEventListener('click', dicSkip);
+  document.getElementById('dicSubmit')?.addEventListener('click', dicCheck);
+  document.getElementById('dicNext')?.addEventListener('click', dicNext);
+  const dicIn = document.getElementById('dicInput');
+  if(dicIn){
+    dicIn.addEventListener('keydown', e=>{ if(e.key==="Enter"){ e.preventDefault(); dicCheck(); } });
+  }
   document.getElementById('importBtn2')?.addEventListener('click', openImport);
   document.getElementById('testTts')?.addEventListener('click', ()=>speak("Привет! Это проверка русского голоса."));
   document.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click', ()=>{
