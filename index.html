@@ -299,9 +299,23 @@ function viewHome(){
 }
 
 /* ============ 渲染：复习卡 ============ */
+/* 手写/词库里的六格：用“六形最长公共前缀”切出词尾并高亮，让词尾自己跳出来 */
+function markCases(w){
+  const vals = CASEK.map(([k]) => w.cases[k] || "");
+  const bare = vals.map(v => v.replace(/^(об|о|во|в|на)\s+/i, ""));
+  let p = bare[0] || "";
+  for (const v of bare) { while (p && !v.startsWith(p)) p = p.slice(0, -1); }
+  if (p.length < 2) return vals.map(esc);
+  return vals.map((v, i) => {
+    const pre = v.slice(0, v.length - bare[i].length);
+    if (bare[i].length <= p.length) return esc(v);
+    return esc(pre + bare[i].slice(0, p.length)) + "<em>" + esc(bare[i].slice(p.length)) + "</em>";
+  });
+}
 function paradigm(w){
   if(w.pos==="noun" && w.cases){
-    return `<table class="tbl">${CASEK.map(([k,label])=>`<tr><td class="k">${label}</td><td class="v">${esc(w.cases[k])}</td></tr>`).join("")}</table>`;
+    const marked = markCases(w);
+    return `<table class="tbl">${CASEK.map(([k,label],i)=>`<tr><td class="k">${label}</td><td class="v">${marked[i]}</td></tr>`).join("")}</table>`;
   }
   if(w.pos==="verb" && w.pres){
     return `<table class="tbl">${PERS.map(([k,zh])=>`<tr><td class="k">${zh}</td><td class="v">${esc(w.pres[k])}</td></tr>`).join("")}
