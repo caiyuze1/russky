@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Русский · 俄语刷词</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Русский">
+<meta name="theme-color" content="#2F5D46">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --paper:#F7F5EF;--card:#FCFBF6;--ink:#1A1D19;--mut:#6E736A;--line:#DCD8CC;
+    --green:#2F5D46;--green-soft:rgba(47,93,70,.10);--amber:#B4761F;--red:#A33B2E;
+    --r:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    font-size:15px;line-height:1.5;overscroll-behavior:none;
+  }
+  .ru{font-family:Georgia,"Times New Roman",serif;}
+  #app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--paper);}
+  header{padding:calc(14px + env(safe-area-inset-top)) 20px 0;display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  header h1{font-size:17px;font-weight:600;letter-spacing:.2px;}
+  header .sub{font-size:11px;color:var(--mut);letter-spacing:.4px;}
+  main{flex:1;padding:14px 20px calc(96px + env(safe-area-inset-bottom));}
+  nav{
+    position:fixed;left:0;right:0;bottom:0;background:rgba(247,245,239,.96);
+    border-top:1px solid var(--line);backdrop-filter:blur(8px);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav .in{max-width:520px;margin:0 auto;display:flex;}
+  nav button{
+    flex:1;background:none;border:0;padding:9px 0 8px;font-size:10.5px;color:var(--mut);
+    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;cursor:pointer;
+  }
+  nav button svg{width:21px;height:21px;stroke:var(--mut);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+  nav button.on{color:var(--green);font-weight:600;}
+  nav button.on svg{stroke:var(--green);}
+  /* ---------- home ---------- */
+  .kicker{font-size:10.5px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;}
+  .h1{font-family:Georgia,serif;font-size:25px;line-height:1.32;margin-top:7px;}
+  .ring{width:172px;height:172px;border-radius:50%;margin:22px auto 0;position:relative;display:flex;
+        flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--line);}
+  .ring .arc{position:absolute;inset:-2px;border-radius:50%;
+    background:conic-gradient(var(--green) var(--deg,0deg), transparent 0);
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 0);
+    mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 0);}
+  .ring .n{font-family:Georgia,serif;font-size:50px;line-height:1;}
+  .ring .t{font-size:11.5px;color:var(--mut);margin-top:5px;letter-spacing:.5px;}
+  .btn{width:100%;height:54px;border-radius:12px;background:var(--green);color:#F7F5EF;border:0;
+       font-size:16px;font-family:inherit;letter-spacing:.3px;cursor:pointer;margin-top:22px;}
+  .btn:disabled{opacity:.45;}
+  .stats{display:flex;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+  .stat{flex:1;text-align:center;}
+  .stat b{display:block;font-family:Georgia,serif;font-size:21px;font-weight:400;}
+  .stat span{font-size:11px;color:var(--mut);letter-spacing:.3px;}
+  .plan{margin-top:16px;border-top:1px solid var(--line);}
+  .plan .row{display:flex;align-items:center;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .plan .dot{width:7px;height:7px;border-radius:50%;background:var(--green);opacity:.5;}
+  .plan .nm{font-size:14px;}
+  .plan .em{font-size:11px;color:var(--mut);margin-left:4px;}
+  .plan .go{margin-left:auto;color:var(--mut);font-size:13px;}
+  /* ---------- card ---------- */
+  .topline{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut);}
+  .topline .back{background:none;border:0;font:inherit;color:var(--mut);padding:4px 0;cursor:pointer;}
+  .progress{height:3px;background:#E7E3D8;border-radius:2px;margin-top:10px;overflow:hidden;}
+  .progress b{display:block;height:100%;background:var(--green);transition:width .25s;}
+  .card{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px 18px 18px;}
+  .wtag{font-size:10px;letter-spacing:1.8px;color:var(--green);text-transform:uppercase;}
+  .word{font-family:Georgia,serif;font-size:46px;line-height:1.14;margin-top:8px;letter-spacing:.5px;word-break:break-word;}
+  .meta{font-size:12px;color:var(--mut);margin-top:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .chip{background:var(--green-soft);color:var(--green);border-radius:4px;padding:1.5px 6px;font-size:10px;letter-spacing:.2px;}
+  .spk{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:none;display:flex;align-items:center;
+       justify-content:center;margin-top:16px;cursor:pointer;}
+  .spk svg{width:19px;height:19px;stroke:var(--green);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .sep{height:1px;background:var(--line);margin:18px 0 16px;}
+  .mean{font-size:19px;}
+  .ex{font-family:Georgia,serif;font-size:15.5px;margin-top:14px;line-height:1.5;color:#2C302A;}
+  .exz{font-size:12.5px;color:var(--mut);margin-top:4px;}
+  .tbl{width:100%;border-collapse:collapse;margin-top:12px;}
+  .tbl td{padding:6px 0;border-top:1px solid #EFEBE0;font-size:13px;vertical-align:top;}
+  .tbl tr:first-child td{border-top:0;}
+  .tbl td.k{color:var(--mut);width:88px;font-size:11px;letter-spacing:.2px;}
+  .tbl td.v{font-family:Georgia,serif;font-size:15px;}
+  .tbl td.v em{font-style:normal;color:var(--green);}
+  .disclose{width:100%;background:none;border:1px solid var(--line);border-radius:9px;margin-top:14px;padding:10px;
+            font:inherit;font-size:12.5px;color:var(--mut);cursor:pointer;}
+  .hide{display:none;}
+  .rates{display:flex;gap:7px;margin-top:16px;}
+  .rate{flex:1;height:46px;border-radius:10px;border:1px solid var(--line);background:none;font:inherit;
+        font-size:12.5px;color:var(--mut);cursor:pointer;}
+  .rate.main{background:var(--green);border-color:var(--green);color:#F7F5EF;}
+  .rate:active{transform:scale(.97);}
+  .hintline{text-align:center;font-size:10.5px;color:#9A9E94;margin-top:11px;letter-spacing:.3px;}
+  /* ---------- lists / tables ---------- */
+  .sect{margin-top:22px;}
+  .sect h2{font-size:12px;font-weight:600;letter-spacing:.6px;color:var(--ink);display:flex;justify-content:space-between;align-items:baseline;}
+  .sect h2 em{font-style:normal;font-size:10.5px;color:var(--mut);font-weight:400;}
+  .krow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .krow .nm{font-size:13.5px;}
+  .krow .meter{width:70px;height:4px;border-radius:2px;background:#E9E5DA;overflow:hidden;margin-left:auto;}
+  .krow .meter b{display:block;height:100%;background:var(--green);}
+  .krow .pct{width:42px;text-align:right;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;}
+  .krow .pct.mid{color:var(--amber);} .krow .pct.low{color:var(--red);}
+  .list .item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .list .w{font-family:Georgia,serif;font-size:17px;min-width:120px;}
+  .list .z{font-size:12.5px;color:var(--mut);flex:1;}
+  .list .dot{width:6px;height:6px;border-radius:50%;background:var(--line);flex:none;}
+  .list .dot.due{background:var(--amber);} .list .dot.new{background:var(--green);}
+  input[type=search],textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--card);
+    padding:11px 12px;font:inherit;font-size:16px;color:var(--ink);}
+  textarea{min-height:120px;resize:vertical;font-size:13px;line-height:1.5;}
+  .chips{display:flex;gap:6px;margin:10px 0 4px;flex-wrap:wrap;}
+  .chips button{border:1px solid var(--line);background:none;border-radius:16px;padding:5px 11px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer;}
+  .chips button.on{background:var(--green);border-color:var(--green);color:#F7F5EF;}
+  .setting{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .setting .ssub{font-size:11px;color:var(--mut);margin-top:2px;}
+  .stepper{display:flex;align-items:center;gap:12px;}
+  .stepper button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:none;font:inherit;font-size:16px;color:var(--ink);cursor:pointer;}
+  .stepper b{font-family:Georgia,serif;font-size:17px;font-weight:400;min-width:20px;text-align:center;}
+  .ghost{width:100%;height:44px;border-radius:10px;border:1px solid var(--line);background:none;font:inherit;font-size:14px;color:var(--ink);margin-top:10px;cursor:pointer;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom));
+    background:#1A1D19;color:#F7F5EF;font-size:12.5px;padding:9px 15px;border-radius:20px;z-index:99;
+    opacity:0;transition:opacity .25s;pointer-events:none;max-width:88%;text-align:center;}
+  .toast.on{opacity:.95;}
+  .empty{color:var(--mut);font-size:13px;padding:18px 0;text-align:center;}
+  .sheet{position:fixed;inset:0;background:rgba(20,22,18,.35);z-index:80;display:flex;align-items:flex-end;justify-content:center;}
+  .sheet .in{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 20px calc(22px + env(safe-area-inset-bottom));max-height:86dvh;overflow:auto;}
+  .sheet .x{float:right;background:none;border:0;font-size:20px;color:var(--mut);cursor:pointer;line-height:1;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><h1 id="htitle">Сегодня</h1><span class="sub" id="hsub"></span></header>
+  <main id="view"></main>
+  <nav><div class="in">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>今天</button>
+    <button data-tab="dict"><svg viewBox="0 0 24 24"><path d="M4 5h7v15H4z"/><path d="M13 5h7v15h-7z"/></svg>词库</button>
+    <button data-tab="gram"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>语法</button>
+    <button data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg>我的</button>
+  </div></nav>
+</div>
+<div class="toast" id="toast"></div>
+<script src="data.js"></script>
+<script>
+/* ============ 数据与状态 ============ */
+const A = "\u0301";
+const DAY = 86400000;
+const BUILTIN = (window.RU_WORDS || []).slice();
+const POSNAME = {noun:"名词",verb:"动词",adj:"形容词",num:"数词",pron:"代词",adv:"副词",proper:"专名",phrase:"词组"};
+const GENNAME = {m:"阳性",f:"阴性",n:"中性"};
+const CASEK = [["nom","И. 主格"],["gen","Р. 属格"],["dat","Д. 与格"],["acc","В. 宾格"],["ins","Т. 造格"],["pre","П. 前置格"]];
+const PERS = [["я","我"],["ты","你"],["он","他/她"],["мы","我们"],["вы","你们/您"],["они","他们"]];
+const PASTK = [["м","阳性"],["ж","阴性"],["с","中性"],["мн","复数"]];
+
+const KEY = "ru-app-v1";
+let S = loadState();
+let sess = null;           // {queue:[id...], i, revealed, correct, wrong, started, total}
+let tab = "home";
+let dictFilter = "all", dictQ = "", dictLesson = 0;
+
+function loadState(){
+  let d = {};
+  try { d = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e){}
+  return Object.assign({ v:1, srs:{}, history:[], custom:[], settings:{newPerDay:8, tts:true, maxReview:60}, days:{} }, d);
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function startOfDay(t){ const d=new Date(t); d.setHours(4,0,0,0); return d.getTime(); } // 以凌晨 4 点为日界
+function allWords(){ return BUILTIN.concat(S.custom); }
+function byId(id){ return allWords().find(w=>w.id===id); }
+function srsOf(id){ return S.srs[id] || (S.srs[id]={ivl:0,ease:2.5,due:0,reps:0,lapses:0,ok:0,bad:0}); }
+function dueList(){ const now=Date.now(); return allWords().filter(w=>{const r=S.srs[w.id]; return r && r.due && r.due<=now;}); }
+function newList(){ return allWords().filter(w=>!S.srs[w.id]); }
+function reviewedToday(){ return S.days[todayKey()] || 0; }
+function streak(){
+  let n=0; const d=new Date();
+  for(;;){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(S.days[k]){n++; d.setDate(d.getDate()-1);} else { if(n===0 && k===todayKey()) { d.setDate(d.getDate()-1); continue; } break; } }
+  return n;
+}
+function weekAcc(){
+  const from = Date.now()-7*DAY; const h = S.history.filter(x=>x.t>=from);
+  if(!h.length) return null;
+  return Math.round(100*h.filter(x=>x.ok).length/h.length);
+}
+function tagStats(){
+  const m = {};
+  S.history.forEach(x=>(x.tags||[]).forEach(t=>{
+    (m[t] = m[t] || {n:0,ok:0}); m[t].n++; if(x.ok) m[t].ok++;
+  }));
+  return Object.entries(m).map(([k,v])=>({tag:k,n:v.n,acc:Math.round(100*v.ok/v.n)})).sort((a,b)=>a.acc-b.acc);
+}
+
+/* ============ 语音 ============ */
+let voicesReady = false;
+function pickRuVoice(){
+  const vs = speechSynthesis.getVoices() || [];
+  return vs.find(v=>/^ru/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = ()=>{ voicesReady = true; };
+  pickRuVoice();
+}
+function speak(text){
+  if(!('speechSynthesis' in window)) return toast("这个浏览器不支持语音朗读");
+  if(!S.settings.tts) return;
+  const clean = String(text).replace(/\u0301/g,"");
+  const u = new SpeechSynthesisUtterance(clean);
+  const v = pickRuVoice();
+  u.lang = "ru-RU"; u.rate = .88;
+  if(v) u.voice = v;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  if(!v) toast("已用系统默认语音；iPhone 自带俄语，Windows 需先添加俄语语音包");
+}
+
+/* ============ 工具 ============ */
+function toast(msg, ms=2600){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'), ms); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function nounTags(w){ return (w.tags||[]).filter(t=>!/^[阴性中性阳性不变格]/.test(t)); }
+function dueLabel(w){ const r=S.srs[w.id]; if(!r||!r.due) return ["new","新词"];
+  return r.due<=Date.now() ? ["due","到期"] : ["","已排期"]; }
+
+/* ============ 复习会话 ============ */
+function startSession(mode, lesson){
+  const pick = w => !lesson || w.lesson === lesson;
+  const due = dueList().filter(pick).map(w=>w.id);
+  const nw  = newList().filter(pick).slice(0, S.settings.newPerDay).map(w=>w.id);
+  let q = (mode==="new") ? nw : (mode==="due" ? due : nw.concat(due));
+  q = q.slice(0, S.settings.maxReview);
+  if(!q.length) return toast(lesson ? `第 ${lesson} 课今天没有要练的了` : "今天的量已经清完，明天再来");
+  sess = { queue:q, i:0, revealed:false, correct:0, wrong:0, total:q.length, again:[] };
+  go("review");
+}
+function currentWord(){ return byId(sess.queue[sess.i]); }
+
+function rate(kind){
+  const w = currentWord(); if(!w) return;
+  const r = srsOf(w.id);
+  const good = kind==="good"||kind==="easy";
+  r.reps++;
+  if(kind==="again"){ r.lapses++; r.ease=Math.max(1.3,r.ease-.2); r.ivl=0; r.due=Date.now(); sess.wrong++; sess.again.push(w.id); }
+  else if(kind==="hard"){ r.ease=Math.max(1.3,r.ease-.05); r.ivl=Math.max(1,Math.round((r.ivl||1)*1.2)); r.due=startOfDay(Date.now())+r.ivl*DAY; sess.wrong++; }
+  else if(kind==="good"){ r.ease=Math.min(3.2,r.ease+.02); r.ivl=r.ivl===0?1:(r.ivl===1?3:Math.round(r.ivl*r.ease)); r.due=startOfDay(Date.now())+r.ivl*DAY; r.ok++; sess.correct++; }
+  else { r.ease=Math.min(3.2,r.ease+.1); r.ivl=r.ivl===0?2:Math.round(r.ivl*r.ease*1.3); r.due=startOfDay(Date.now())+r.ivl*DAY; r.ok++; sess.correct++; }
+  S.history.push({id:w.id, tags:(w.tags||[]).slice(), ok:good, t:Date.now()});
+  if(S.history.length>3000) S.history = S.history.slice(-2500);
+  const k = todayKey(); S.days[k] = (S.days[k]||0)+1;
+  save();
+  next();
+}
+function next(){
+  sess.i++; sess.revealed=false;
+  if(sess.i >= sess.queue.length){
+    if(sess.again.length){ // 忘了的当轮重来一次
+      sess.queue = sess.again.slice(); sess.again = []; sess.i = 0;
+      toast("这些再看一遍：" + sess.queue.length + " 张");
+    } else {
+      const c=sess.correct,w=sess.wrong; sess=null; save();
+      go("home"); toast(`本轮完成：对 ${c} · 错 ${w}`, 3200); return;
+    }
+  }
+  render();
+}
+
+/* ============ 渲染：今天 ============ */
+function viewHome(){
+  const due = dueList().length, nw = Math.min(newList().length, S.settings.newPerDay);
+  const done = reviewedToday(), target = done + due + nw;
+  const pct = target ? Math.min(100, Math.round(100*done/target)) : 0;
+  const acc = weekAcc();
+  document.getElementById('htitle').textContent = "Сегодня";
+  document.getElementById('hsub').textContent = new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'short'});
+  return `
+    <p class="kicker">第 ${streak()||1} 天 · ${due+nw ? "还差 "+ (due+nw) +" 张" : "今日已清空"}</p>
+    <p class="h1">今天先过一遍<br>这 ${target||S.settings.newPerDay} 张卡</p>
+    <div class="ring" style="--deg:${pct*3.6}deg">
+      <div class="arc"></div><span class="n">${done}</span><span class="t">/ ${target||S.settings.newPerDay} 已完成</span>
+    </div>
+    <button class="btn" id="startBtn" ${due+nw? "":"disabled"}>${due+nw? (done? "继续复习 · ":"开始复习 · ")+ (due+nw) +" 张待完成":"今天已完成，休息一下"}</button>
+    <div class="stats">
+      <div class="stat"><b>${nw}</b><span>今日新词</span></div>
+      <div class="stat"><b>${due}</b><span>到期复习</span></div>
+      <div class="stat"><b>${acc===null?"—":acc+"%"}</b><span>本周正确率</span></div>
+    </div>
+    <div class="plan">
+      <div class="row" data-go="new"><span class="dot"></span><span class="nm">新词<em class="em">· 内置 + 导入</em></span><span class="go">${nw} →</span></div>
+      <div class="row" data-go="due"><span class="dot"></span><span class="nm">到期复习<em class="em">· 间隔重复</em></span><span class="go">${due} →</span></div>
+      <div class="row" data-go="lesson"><span class="dot"></span><span class="nm">按课次练<em class="em">· 只做第 N 课</em></span><span class="go">选课 →</span></div>
+      <div class="row" data-go="gram"><span class="dot"></span><span class="nm">语法训练<em class="em">· 六格 / 变位</em></span><span class="go">查看 →</span></div>
+    </div>`;
+}
+
+/* ============ 渲染：复习卡 ============ */
+function paradigm(w){
+  if(w.pos==="noun" && w.cases){
+    return `<table class="tbl">${CASEK.map(([k,label])=>`<tr><td class="k">${label}</td><td class="v">${esc(w.cases[k])}</td></tr>`).join("")}</table>`;
+  }
+  if(w.pos==="verb" && w.pres){
+    return `<table class="tbl">${PERS.map(([k,zh])=>`<tr><td class="k">${zh}</td><td class="v">${esc(w.pres[k])}</td></tr>`).join("")}
+      ${w.past?PASTK.map(([k,zh])=>`<tr><td class="k">过去·${zh}</td><td class="v">${esc(w.past[k])}</td></tr>`).join(""):""}</table>`;
+  }
+  if(w.pos==="adj" && w.forms){
+    return `<table class="tbl">${[["m","阳性"],["f","阴性"],["n","中性"],["pl","复数"]].map(([k,zh])=>`<tr><td class="k">${zh}</td><td class="v">${esc(w.forms[k])}</td></tr>`).join("")}</table>`;
+  }
+  if (w.pos === "noun" && w.gender) {
+    const r = declRule(w);
+    if (r) return `<table class="tbl">${CASEK.map(([k,label],i)=>
+      `<tr><td class="k">${label}</td><td class="v">${esc(r.stem)}<em>${esc(r.ends[i])}</em></td></tr>`).join("")}</table>
+      <p class="hintline" style="text-align:left;margin-top:8px">按词尾规则推导（重音可能移动；动物名词第四格已按第二格处理）</p>`;
+  }
+  return `<p class="empty">这个词没有变形表（${POSNAME[w.pos]||"词组"}）</p>`;
+}
+function declRule(w){
+  const ru = w.ru, last = ru.slice(-1).toLowerCase();
+  let g = w.gender, stem = ru, ends = null;
+  if (g === "m" && (last === "а" || last === "я")) g = "f";   // па́па / де́душка / дя́дя：走阴性命名的词尾
+  if (g === "m") {
+    if (last === "ь") { stem = ru.slice(0,-1); ends = ["ь","я","ю","ь","ем","е"]; }
+    else if (last === "й") { stem = ru.slice(0,-1); ends = ["й","я","ю","й","ем","е"]; }
+    else ends = ["","а","у","","ом","е"];
+    if (w.anim) ends[3] = ends[1];                            // 动物名词：第四格＝第二格
+  } else if (g === "f") {
+    if (last === "а") {
+      const prev = ru.slice(-2,-1).toLowerCase();
+      const soft = /[гкхжчшщц]/.test(prev);   // 这些后面属格写 -и 而不是 -ы
+      const hush = /[жчшщц]/.test(prev);      // 只有咝音/ц 后面造格才是 -ей（кни́гой vs у́лицей）
+      stem = ru.slice(0,-1);
+      ends = ["а", soft?"и":"ы", "е", "у", hush?"ей":"ой", "е"];
+    } else if (last === "я") { stem = ru.slice(0,-1); ends = ["я","и","е","ю","ей","е"]; }
+    else if (last === "ь") { stem = ru.slice(0,-1); ends = ["ь","и","и","ь","ью","и"]; }
+  } else if (g === "n") {
+    if (last === "о") { stem = ru.slice(0,-1); ends = ["о","а","у","о","ом","е"]; }
+    else if (last === "е") { stem = ru.slice(0,-1); ends = ["е","я","ю","е","ем","и"]; }
+  }
+  return ends ? { stem, ends } : null;
+}
+function viewReview(){
+  const w = currentWord(); if(!w){ sess=null; return viewHome(); }
+  const posname = POSNAME[w.pos] || "词组";
+  const gen = w.gender ? GENNAME[w.gender] : "";
+  document.getElementById('htitle').textContent = "复习";
+  document.getElementById('hsub').textContent = `${sess.i+1} / ${sess.total}`;
+  return `
+    <div class="topline"><button class="back" id="quit">← 退出</button><span>剩 ${Math.max(0,sess.total-sess.i-1)} 张</span></div>
+    <div class="progress"><b style="width:${Math.round(100*sess.i/sess.total)}%"></b></div>
+    <div class="card">
+      <p class="wtag">${w.pos==="noun"?"СУЩЕСТВИТЕЛЬНОЕ":w.pos==="verb"?"ГЛАГОЛ":w.pos==="adj"?"ПРИЛАГАТЕЛЬНОЕ":"СЛОВО"} · ${sess.i+1}</p>
+      <p class="word">${esc(w.ru)}</p>
+      <p class="meta">${w.lesson?`<span class="chip">第${w.lesson}课</span>`:""}<span class="chip">${posname}</span>${gen?`<span class="chip">${gen}</span>`:""}${w.pair?`<span class="chip">体对 ${esc(w.pair)}</span>`:""}${(w.tags||[]).filter(t=>/第.格|变位|性数|不规则/.test(t)).slice(0,1).map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</p>
+      <button class="spk" id="spk" aria-label="发音"><svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5z"/><path d="M17.5 8.5a5 5 0 010 7"/></svg></button>
+      ${sess.revealed ? `
+        <div class="sep"></div>
+        <p class="mean">${esc(w.zh)}</p>
+        ${w.ex?`<p class="ex">${esc(w.ex)}</p><p class="exz">${esc(w.exz||"")}</p>`:""}
+        <button class="disclose" id="para">${w.pos==="noun"?"展开六格变格":w.pos==="verb"?"展开变位":"展开变形"}</button>
+        <div class="hide" id="paraBox"><div class="tblwrap">${paradigm(w)}</div></div>
+        <div class="rates">
+          <button class="rate" data-r="again">忘了</button>
+          <button class="rate" data-r="hard">模糊</button>
+          <button class="rate main" data-r="good">记得</button>
+          <button class="rate" data-r="easy">太简单</button>
+        </div>` : `
+        <div class="sep"></div>
+        <button class="btn" id="reveal" style="margin-top:2px">显示释义</button>`}
+    </div>
+    <p class="hintline">点喇叭或词可听发音 · 重音决定元音弱化</p>`;
+}
+
+/* ============ 渲染：语法 ============ */
+const CASEREF = [
+ ["И.","主格","谁/什么","-а/-я → -а/-я；阳/中性常无词尾"],
+ ["Р.","属格","没有谁/什么","-а→-ы/-и，-о→-а，阳性加 -а"],
+ ["Д.","与格","给谁","-а→-е，阳性加 -у"],
+ ["В.","宾格","看见谁/什么","阴性 -у/-ю，阳性非动物=主格"],
+ ["Т.","造格","和谁/用什么","-а→-ой，阳性加 -ом"],
+ ["П.","前置格","在哪儿/关于","几乎都 -е，前加 в/на/о"]
+];
+function viewGram(){
+  const st = tagStats();
+  document.getElementById('htitle').textContent = "语法";
+  document.getElementById('hsub').textContent = st.length ? st[0].tag+" 最弱" : "";
+  const rows = st.length ? st.map(x=>{
+    const cls = x.acc<65?"low":x.acc<80?"mid":"";
+    return `<div class="krow"><span class="nm">${esc(x.tag)}</span><span class="meter"><b style="width:${x.acc}%"></b></span><span class="pct ${cls}">${x.acc}%</span></div>`;
+  }).join("") : `<p class="empty">练过 5 张卡后，这里会按考点排出你的正确率</p>`;
+  return `
+    <div class="sect" style="margin-top:4px"><h2>考点掌握度<em>按正确率从低到高</em></h2>${rows}</div>
+    <div class="sect"><h2>六格速查<em>问句 → 词尾</em></h2>
+      <table class="tbl">${CASEREF.map(([k,n,q,e])=>`<tr><td class="k">${k} ${n}</td><td class="v" style="font-family:inherit;font-size:12.5px">${q}<br><span style="color:var(--mut);font-size:11.5px">${e}</span></td></tr>`).join("")}</table>
+    </div>
+    <div class="sect"><h2>背词纪律<em>三句话</em></h2>
+      <p class="ex" style="font-family:inherit;font-size:13.5px;line-height:1.7">1. 名词必须连着六格一起记，只记主格等于没记。<br>2. 动词直接背「体对」：читать / прочитать，成对入脑。<br>3. 重音错了，元音就错了——跟读时跟重音，不跟字母。</p>
+    </div>`;
+}
+
+/* ============ 渲染：词库 ============ */
+function viewDict(){
+  const all = allWords();
+  let list = all.filter(w=>{
+    if(dictFilter==="noun"&&w.pos!=="noun") return false;
+    if(dictFilter==="verb"&&w.pos!=="verb") return false;
+    if(dictFilter==="adj"&&w.pos!=="adj") return false;
+    if(dictFilter==="mine"&&!S.custom.includes(w)) return false;
+    if(dictLesson && w.lesson!==dictLesson) return false;
+    if(dictQ){ const q=dictQ.toLowerCase(); return (w.ru+w.zh).toLowerCase().includes(q); }
+    return true;
+  });
+  document.getElementById('htitle').textContent = "词库";
+  document.getElementById('hsub').textContent = `${all.length} 词`;
+  return `
+    <input type="search" id="q" placeholder="搜俄语或中文…" value="${esc(dictQ)}">
+    <div class="chips">
+      ${[["all","全部"],["noun","名词"],["verb","动词"],["adj","形容词"],["mine","我的导入"]].map(([k,l])=>
+        `<button data-f="${k}" class="${dictFilter===k?"on":""}">${l}</button>`).join("")}
+    </div>
+    <div class="chips" style="margin-top:0;overflow-x:auto;flex-wrap:nowrap;padding-bottom:6px">
+      <button data-l="0" class="${dictLesson===0?"on":""}">全部课次</button>
+      ${[...new Set(allWords().map(w=>w.lesson).filter(Boolean))].sort((a,b)=>a-b).map(n=>
+        `<button data-l="${n}" class="${dictLesson===n?"on":""}" style="flex:none">第${n}课</button>`).join("")}
+    </div>
+    <div class="list">${list.length? list.map(w=>{
+      const [cls,label]=dueLabel(w);
+      return `<div class="item" data-w="${w.id}"><span class="dot ${cls}"></span><span class="w">${esc(w.ru)}</span><span class="z">${esc(w.zh)}</span><span style="font-size:11px;color:var(--mut)">${w.lesson?"第"+w.lesson+"课 · ":""}${label}</span></div>`;
+    }).join("") : `<p class="empty">没有匹配的词</p>`}</div>
+    ${dictLesson?`<button class="ghost" id="trainLesson" style="border-color:var(--green);color:var(--green)">练第 ${dictLesson} 课</button>`:""}
+    <button class="ghost" id="importBtn">导入课本词表</button>`;
+}
+
+/* ============ 渲染：我的 ============ */
+function viewMe(){
+  const all = allWords(), learned = Object.keys(S.srs).length;
+  document.getElementById('htitle').textContent = "我的";
+  document.getElementById('hsub').textContent = `连续 ${streak()} 天`;
+  return `
+    <div class="stats" style="border-top:0;padding-top:0">
+      <div class="stat"><b>${all.length}</b><span>词库总量</span></div>
+      <div class="stat"><b>${learned}</b><span>已开始学</span></div>
+      <div class="stat"><b>${Object.values(S.srs).filter(r=>r.ivl>=7).length}</b><span>间隔≥7天</span></div>
+    </div>
+    <div class="sect"><h2>每日节奏</h2>
+      <div class="setting"><div>每天新词<div class="ssub">多了记不住，8–12 个最稳</div></div>
+        <div class="stepper"><button data-s="newPerDay" data-d="-1">−</button><b>${S.settings.newPerDay}</b><button data-s="newPerDay" data-d="1">+</button></div>
+      </div>
+      <div class="setting"><div>语音朗读<div class="ssub">${pickRuVoice()? "已找到俄语语音" : "未检测到俄语语音（iPhone 可用）"}</div></div>
+        <button class="ghost" style="width:auto;margin:0;padding:0 14px;height:34px;font-size:12.5px" id="testTts">测试</button>
+      </div>
+    </div>
+    <div class="sect"><h2>数据</h2>
+      <button class="ghost" id="exportBtn">导出进度（JSON）</button>
+      <button class="ghost" id="importBtn2">导入课本词表</button>
+      <button class="ghost" id="resetBtn" style="color:var(--red)">清空学习进度</button>
+    </div>
+    <p class="hintline" style="margin-top:18px">内置 64 词 · 数据只存在本机</p>`;
+}
+
+/* ============ 明细弹层（词库点击） ============ */
+function openWord(id){
+  const w = byId(id); if(!w) return;
+  const box = document.createElement('div'); box.className='sheet';
+  box.innerHTML = `<div class="in"><button class="x" data-close>×</button>
+    <p class="wtag">${(POSNAME[w.pos]||"词组")} ${w.gender?GENNAME[w.gender]:""}</p>
+    <p class="word" style="font-size:36px">${esc(w.ru)}</p>
+    <p class="mean" style="margin-top:8px">${esc(w.zh)}</p>
+    ${w.ex?`<p class="ex">${esc(w.ex)}</p><p class="exz">${esc(w.exz||"")}</p>`:""}
+    ${paradigm(w)}
+    <button class="ghost" data-spk="${esc(w.ru)}" style="margin-top:16px">🔊 听发音</button>
+  </div>`;
+  box.addEventListener('click', e=>{
+    if(e.target===box || e.target.hasAttribute('data-close')) box.remove();
+    const sp = e.target.closest('[data-spk]'); if(sp) speak(sp.dataset.spk);
+  });
+  document.body.appendChild(box);
+}
+
+/* ============ 按课次练 ============ */
+function openLessonSheet(){
+  const lessons = [...new Set(allWords().map(w=>w.lesson).filter(Boolean))].sort((a,b)=>a-b);
+  const now = Date.now();
+  const rows = lessons.map(n=>{
+    const inL = allWords().filter(w=>w.lesson===n);
+    const due = inL.filter(w=>S.srs[w.id] && S.srs[w.id].due && S.srs[w.id].due<=now).length;
+    const nw  = inL.filter(w=>!S.srs[w.id]).length;
+    const all = due + nw;
+    return `<div class="item" data-lesson="${n}" style="${all?"":"opacity:.45"}">
+      <span class="w" style="min-width:52px">第${n}课</span>
+      <span class="z">共 ${inL.length} 词 · 新 ${nw} · 到期 ${due}</span>
+      <span style="font-size:11px;color:var(--mut)">${all? all+" 张 →" : "已清空"}</span></div>`;
+  }).join("");
+  const box = document.createElement('div'); box.className='sheet';
+  box.innerHTML = `<div class="in"><button class="x" data-close>×</button>
+    <p class="wtag">按课次练</p>
+    <p class="h1" style="font-size:18px;margin-top:6px">选一课，只做这一课</p>
+    <p class="exz" style="margin-top:6px">已到期的最先出来，再补本课新词（每天上限 ${S.settings.newPerDay} 个）</p>
+    <div class="list" style="margin-top:10px">${rows}</div>
+  </div>`;
+  box.addEventListener('click', e=>{
+    if(e.target===box || e.target.hasAttribute('data-close')) return box.remove();
+    const it = e.target.closest('[data-lesson]');
+    if(it){ const n=+it.dataset.lesson; box.remove(); startSession("all", n); }
+  });
+  document.body.appendChild(box);
+}
+
+/* ============ 导入 ============ */
+function openImport(){
+  const box = document.createElement('div'); box.className='sheet';
+  box.innerHTML = `<div class="in"><button class="x" data-close>×</button>
+    <p class="wtag">导入课本词表</p>
+    <p class="h1" style="font-size:18px;margin-top:6px">每行一个词，俄语在前</p>
+    <p class="exz" style="margin-top:6px">支持：「кни́га 书」「кни́га - 书」「кни́га|书」「кни́га	书」。有重音符号更好，没有也能用。</p>
+    <textarea id="impTa" placeholder="кни́га 书
+стол 桌子
+чита́ть 读"></textarea>
+    <button class="btn" id="impGo" style="margin-top:12px">解析并加入词库</button>
+    <p class="exz" id="impMsg" style="margin-top:10px"></p>
+  </div>`;
+  box.addEventListener('click', e=>{ if(e.target===box||e.target.hasAttribute('data-close')) box.remove(); });
+  document.body.appendChild(box);
+  box.querySelector('#impGo').onclick = ()=>{
+    const txt = box.querySelector('#impTa').value;
+    const res = parseList(txt);
+    box.querySelector('#impMsg').textContent = `识别 ${res.added} 个新词，跳过重复 ${res.dup} 行，无法解析 ${res.bad} 行`;
+    if(res.added){ save(); render(); setTimeout(()=>box.remove(), 1200); }
+  };
+}
+function guessGender(ru){
+  if(/(мя|ие)$/.test(ru)) return "n";
+  if(/(а|я)$/.test(ru)) return "f";
+  if(/(о|е)$/.test(ru)) return "n";
+  if(/(ь)$/.test(ru)) return "f";
+  return "m";
+}
+function parseList(txt){
+  const lines = String(txt).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  let added=0, dup=0, bad=0;
+  const existing = new Set(allWords().map(w=>w.ru.replace(/\u0301/g,"").toLowerCase()));
+  lines.forEach(line=>{
+    const m = line.match(/^([\u0400-\u04FFЁё\u0301\-' ]+?)\s*(?:[\t|;=]|\s+[-–—]\s+|\s*,\s*|\s{2,}|\s)\s*(.+)$/u);
+    if(!m){ bad++; return; }
+    let ru = m[1].trim(), zh = m[2].trim();
+    if(!/[\u0400-\u04FF]/.test(ru)){ bad++; return; }
+    const key = ru.replace(/\u0301/g,"").toLowerCase();
+    if(existing.has(key)){ dup++; return; }
+    existing.add(key);
+    const isVerb = /(ть|ться|тся)$/i.test(key) && !/ть$/.test("") ? true : false;
+    const pos = isVerb ? "verb" : "noun";
+    const gen = isVerb ? undefined : guessGender(key);
+    const tags = isVerb ? ["动词变位","动词体"] : [gen==="f"?"阴性":gen==="n"?"中性":"阳性"];
+    if(ru.indexOf("\u0301")<0) tags.push("重音待补");
+    S.custom.push({ id:"c"+(Date.now().toString(36))+Math.random().toString(36).slice(2,6),
+      ru, zh, pos, gender:gen, tags, theme:"导入", imported:true });
+    added++;
+  });
+  return { added, dup, bad };
+}
+
+/* ============ 路由 ============ */
+const TITLES = {home:"Сегодня", dict:"Словарь", gram:"Грамматика", me:"Профиль", review:"Тренировка"};
+function go(t){ tab = t; render(); window.scrollTo(0,0); }
+function render(){
+  const v = document.getElementById('view');
+  if(tab==="review" && sess) v.innerHTML = viewReview();
+  else {
+    if(tab==="home") v.innerHTML = viewHome();
+    else if(tab==="dict") v.innerHTML = viewDict();
+    else if(tab==="gram") v.innerHTML = viewGram();
+    else if(tab==="me") v.innerHTML = viewMe();
+    if(tab!=="review"){ document.getElementById('htitle').textContent = TITLES[tab]||"Русский"; }
+  }
+  if(tab==="review"){ document.getElementById('htitle').textContent = "Тренировка"; document.getElementById('hsub').textContent = `${(sess? (sess.i+1):1)} / ${(sess?sess.total:0)}`; }
+  else { const h={home:"Сегодня",dict:"Словарь",gram:"Грамматика",me:"Профиль"}[tab]; document.getElementById('htitle').textContent=h;
+    document.getElementById('hsub').textContent = tab==="home" ? new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric'}) : (tab==="dict" ? allWords().length+" 词" : ""); }
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===(tab==="review"?"home":tab)));
+  bind();
+}
+function bind(){
+  document.getElementById('startBtn')?.addEventListener('click', ()=>startSession("all"));
+  document.querySelectorAll('.plan .row').forEach(r=>r.addEventListener('click', ()=>{
+    const g=r.dataset.go;
+    if(g==="gram") return go("gram");
+    if(g==="lesson") return openLessonSheet();
+    startSession(g);
+  }));
+  document.getElementById('reveal')?.addEventListener('click', ()=>{ sess.revealed=true; render(); });
+  document.getElementById('spk')?.addEventListener('click', ()=>speak(currentWord().ru));
+  document.getElementById('para')?.addEventListener('click', ()=>{
+    const b=document.getElementById('paraBox'); b.classList.toggle('hide');
+    document.getElementById('para').textContent = b.classList.contains('hide')
+      ? (currentWord().pos==="noun"?"展开六格变格":currentWord().pos==="verb"?"展开变位":"展开变形")
+      : "收起";
+  });
+  document.querySelectorAll('.rate').forEach(b=>b.addEventListener('click', ()=>rate(b.dataset.r)));
+  document.getElementById('quit')?.addEventListener('click', ()=>{ sess=null; go("home"); });
+  const q=document.getElementById('q');
+  if(q){ q.addEventListener('input', e=>{ dictQ=e.target.value; const pos=e.target.selectionStart; render();
+      const nq=document.getElementById('q'); if(nq){ nq.focus(); try{nq.setSelectionRange(pos,pos);}catch(_){}} }); }
+  document.querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click', ()=>{ dictFilter=b.dataset.f; render(); }));
+  document.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click', ()=>{ dictLesson=+b.dataset.l; render(); }));
+  document.querySelectorAll('.list .item').forEach(it=>it.addEventListener('click', ()=>openWord(it.dataset.w)));
+  document.getElementById('importBtn')?.addEventListener('click', openImport);
+  document.getElementById('trainLesson')?.addEventListener('click', ()=>startSession("all", dictLesson));
+  document.getElementById('importBtn2')?.addEventListener('click', openImport);
+  document.getElementById('testTts')?.addEventListener('click', ()=>speak("Привет! Это проверка русского голоса."));
+  document.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click', ()=>{
+    const k=b.dataset.s, d=+b.dataset.d;
+    S.settings[k]=Math.max(1, Math.min(40, S.settings[k]+d)); save(); render();
+  }));
+  document.getElementById('exportBtn')?.addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(S,null,1)], {type:"application/json"});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download="ru-学词进度-"+todayKey()+".json"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000); toast("已导出 JSON");
+  });
+  document.getElementById('resetBtn')?.addEventListener('click', ()=>{
+    if(!confirm("清空学习进度？导入的词会保留，进度和统计会清零。")) return;
+    S.srs={}; S.history=[]; S.days={}; save(); render(); toast("已清空进度");
+  });
+  document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{ sess=null; go(b.dataset.tab); });
+}
+
+/* ============ 启动 ============ */
+render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+document.addEventListener('gesturestart', e=>e.preventDefault());
+</script>
+</body>
+</html>
