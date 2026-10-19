@@ -153,6 +153,11 @@
   .dicres .ans{font-size:26px;margin:2px 0;letter-spacing:.02em;}
   .dicres .zh{font-size:13px;color:var(--mut);margin:2px 0 0;}
   .dicres .cmpline{font-size:15px;margin:9px 0 0;color:#4a4a44;}
+  .dicgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+  .dicc{display:flex;flex-direction:column;align-items:center;gap:3px;padding:13px 6px;border:1px solid var(--line);
+    border-radius:12px;background:#fff;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;}
+  .dicc:active{transform:scale(.97);}
+  .dicc em{font-style:normal;font-size:11px;color:var(--mut);}
 </style>
 </head>
 <body>
@@ -425,20 +430,18 @@ function viewDictation(){
           + '<p class="hintline" style="margin-top:10px">手机要先在键盘设置里加俄语键盘；ё 打不出来写 е 也算对</p>');
 }
 function openDicSheet(){
-  const lessons = [].concat(new Set(allWords().map(w=>w.lesson).filter(Boolean))).sort((a,b)=>a-b);
+  const lessons = [...new Set(allWords().map(w=>w.lesson).filter(Boolean))].sort((a,b)=>a-b);
   const now = Date.now();
   const rows = lessons.map(function(n){
-    const inL = allWords().filter(w=>w.lesson===n);
+    const inL = allWords().filter(w=>w.lesson===n && !/[\s()?!,.:;«»—–]/.test(w.ru||""));
     const bad = inL.filter(w=>(S.srs[w.id]||{}).lapses>0).length;
-    return '<div class="item" data-dl="'+n+'"><span class="w" style="min-width:52px">第'+n+'课</span>'
-      + '<span class="z">共 '+inL.length+' 词'+(bad?' · 错过 '+bad:'')+'</span>'
-      + '<span style="font-size:11px;color:var(--mut)">听写 →</span></div>';
+    return '<button class="dicc" data-dl="'+n+'">第'+n+'课<em>'+inL.length+' 词'+(bad?' · 错 '+bad:'')+'</em></button>';
   }).join("");
   const box = document.createElement('div'); box.className='sheet';
   box.innerHTML = '<div class="in"><button class="x" data-close>×</button>'
     + '<p class="wtag">听写</p><p class="h1" style="font-size:18px;margin-top:6px">选一课听写</p>'
     + '<p class="exz" style="margin-top:6px">到期和错得多的词优先出，每轮最多 20 个</p>'
-    + '<div class="list" style="margin-top:10px">'+rows+'</div></div>';
+    + '<div class="dicgrid">'+rows+'</div></div>';
   box.addEventListener('click', function(e){
     if(e.target===box || e.target.hasAttribute('data-close')) return box.remove();
     const it = e.target.closest('[data-dl]');
