@@ -158,6 +158,27 @@
     border-radius:12px;background:#fff;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;}
   .dicc:active{transform:scale(.97);}
   .dicc em{font-style:normal;font-size:11px;color:var(--mut);}
+  /* —— 语法速查 —— */
+  .gm{border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px;overflow:hidden;}
+  .gm summary{list-style:none;cursor:pointer;padding:14px 15px;display:flex;align-items:center;gap:7px;}
+  .gm summary::-webkit-details-marker{display:none;}
+  .gmt{font-size:15px;font-weight:600;white-space:nowrap;}
+  .gmr{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+  .gml{font-size:10px;color:var(--green);border:1px solid #cfdcd3;border-radius:20px;padding:1px 6px;white-space:nowrap;}
+  .gm summary::after{content:"+";color:var(--mut);font-size:16px;line-height:1;}
+  .gm[open] summary::after{content:"–";}
+  .gmb{padding:0 15px 14px;}
+  .gmb .tbl{margin-top:2px;}
+  .gmh{font-size:12px;color:var(--mut);margin:12px 0 5px;letter-spacing:.04em;}
+  .tip{font-size:12.5px;line-height:1.65;color:#3f4a43;background:var(--green-soft);border-radius:10px;padding:9px 11px;margin:9px 0 0;}
+  .plurline{font-size:13px;margin:9px 0 0;color:#4a4a44;}
+  /* —— 语法小测 —— */
+  .qopts{display:flex;flex-direction:column;gap:9px;margin:16px 0 4px;}
+  .qopt{width:100%;text-align:left;padding:14px 16px;border-radius:13px;border:1px solid var(--line);background:#fff;
+    font:inherit;font-size:16px;color:var(--ink);cursor:pointer;}
+  .qopt:active{transform:scale(.99);}
+  .qopt.right{border-color:#8fbfa2;background:#eff7f2;font-weight:600;}
+  .qopt.wrong{border-color:#e0a898;background:#fdf1ec;text-decoration:line-through;color:#a4553f;}
 </style>
 </head>
 <body>
@@ -496,7 +517,9 @@ function markCases(w){
 function paradigm(w){
   if(w.pos==="noun" && w.cases){
     const marked = markCases(w);
-    return `<table class="tbl">${CASEK.map(([k,label],i)=>`<tr><td class="k">${label}</td><td class="v">${marked[i]}</td></tr>`).join("")}</table>`;
+    const pl = pluralOf(w);
+    return `<table class="tbl">${CASEK.map(([k,label],i)=>`<tr><td class="k">${label}</td><td class="v">${marked[i]}</td></tr>`).join("")}</table>`
+      + (pl ? `<p class="plurline">复数：<b>${esc(pl)}</b></p>` : "");
   }
   if(w.pos==="verb" && w.pres){
     return `<table class="tbl">${PERS.map(([k,zh])=>`<tr><td class="k">${zh}</td><td class="v">${esc(w.pres[k])}</td></tr>`).join("")}
@@ -507,9 +530,10 @@ function paradigm(w){
   }
   if (w.pos === "noun" && w.gender) {
     const r = declRule(w);
-    if (r) return `<table class="tbl">${CASEK.map(([k,label],i)=>
-      `<tr><td class="k">${label}</td><td class="v">${esc(r.stem)}<em>${esc(r.ends[i])}</em></td></tr>`).join("")}</table>
-      <p class="hintline" style="text-align:left;margin-top:8px">按词尾规则推导（重音可能移动；动物名词第四格已按第二格处理）</p>`;
+    if (r) { const pl = pluralOf(w); return `<table class="tbl">${CASEK.map(([k,label],i)=>
+      `<tr><td class="k">${label}</td><td class="v">${esc(r.stem)}<em>${esc(r.ends[i])}</em></td></tr>`).join("")}</table>`
+      + (pl ? `<p class="plurline">复数：<b>${esc(pl)}</b></p>` : "")
+      + `<p class="hintline" style="text-align:left;margin-top:8px">按词尾规则推导（重音可能移动；动物名词第四格已按第二格处理）</p>`; }
   }
   return `<p class="empty">这个词没有变形表（${POSNAME[w.pos]||"词组"}）</p>`;
 }
@@ -578,22 +602,251 @@ const CASEREF = [
  ["Т.","造格","和谁/用什么","-а→-ой，阳性加 -ом"],
  ["П.","前置格","在哪儿/关于","几乎都 -е，前加 в/на/о"]
 ];
+/* ============ 名词复数（课件 Урок5 / Урок6） ============ */
+const PLURAL_EX = {
+  "друг":"друзья","брат":"братья","сын":"сыновья","стул":"стулья","дерево":"деревья",
+  "крыло":"крылья","перо":"перья","лист":"листья","дом":"дома́","город":"города́",
+  "глаз":"глаза́","остров":"острова́","адрес":"адреса́","поезд":"поезда́","паспорт":"паспорта́",
+  "сестра":"сёстры","человек":"люди","ребёнок":"де́ти","яблоко":"я́блоки","ухо":"у́ши",
+  "цветок":"цветы́","сосед":"сосе́ди","хозяин":"хозя́ева","мать":"ма́тери","дочь":"до́чери",
+  "время":"времена́","имя":"имена́","гражданин":"гра́ждане","крестьянин":"крестья́не",
+  "англичанин":"англича́не","горожанин":"горожа́не","учитель":"учителя́","преподаватель":"преподава́тели",
+  "деньги":"де́ньги","часы":"часы́","вечер":"вечера́","стул":"сту́лья"
+};
+/* 不变格名词：复数和单数一模一样 */
+const INDECL = {"фото":1,"кино":1,"метро":1,"пальто":1,"радио":1,"кофе":1,"пианино":1,"какао":1,
+  "пюре":1,"жюри":1,"цунами":1,"интервью":1,"табу":1,"виски":1,"дог-шоу":1,"салями":1,"такси":1};
+function accentAt(s, from){
+  const v="аеёиоуыэюя";
+  for(let i=from;i>=0;i--){ if(v.indexOf(s[i])>=0) return s.slice(0,i+1)+"\u0301"+s.slice(i+1); }
+  return s;
+}
+function cutEnd(s, n){          // 按“字母”数从尾部切，重音符号不算一个字母
+  const AC="\u0301"; let i=s.length-1, c=0;
+  while(i>=0 && c<n){ if(s[i]!==AC) c++; i--; }
+  return s.slice(0,i+1);
+}
+function pluralOf(w){
+  if(!w || w.pos!=='noun' || !w.ru || !w.gender) return '';   // 复数专用名词（очки, деньги）没有单数→复数可推
+  const AC="\u0301";
+  const ru = w.ru, bare = ru.replace(/\u0301/g,'').toLowerCase();
+  if(PLURAL_EX[bare]) return PLURAL_EX[bare];
+  if(INDECL[bare]) return ru;
+  let core = ru, finalStress = false;
+  if(core.slice(-1) === AC){ finalStress = true; core = core.slice(0,-1); }
+  const b = core.replace(/\u0301/g,'').toLowerCase();
+  let out, accLast = false, fixed = false;
+  if(/ья$/.test(b)){ out = cutEnd(core,2) + 'ьи'; accLast = true; }             // семья́ → семьи́
+  else if(/ая$/.test(b)){ out = cutEnd(core,2) + 'ые'; fixed = true; }          // столо́вая → столо́вые
+  else if(/ое$/.test(b)){ out = cutEnd(core,2) + 'ые'; fixed = true; }          // моро́женое → моро́женые
+  else if(/ёнок$/.test(b)){ out = cutEnd(core,4) + 'я́та'; fixed = true; }      // котёнок → котя́та
+  else if(/онок$/.test(b)){ out = cutEnd(core,4) + 'а́та'; fixed = true; }      // медвежо́нок → медвежа́та
+  else if(/ия$/.test(b)){ out = cutEnd(core,2) + 'ии'; }
+  else if(/ие$/.test(b)){ out = cutEnd(core,2) + 'ия'; }
+  else if(/ий$/.test(b)){ out = cutEnd(core,2) + 'ии'; }
+  else if(/й$/.test(b)){ out = cutEnd(core,1) + 'и'; }
+  else if(/ь$/.test(b)){ out = cutEnd(core,1) + 'и'; }
+  else if(/а$/.test(b)){ const prev = b.slice(-2,-1); out = cutEnd(core,1) + (/[гкхжчшщ]/.test(prev)?'и':'ы'); }
+  else if(/я$/.test(b)){ out = cutEnd(core,1) + 'и'; }
+  else if(/о$/.test(b)){ out = cutEnd(core,1) + 'а'; }
+  else if(/е$/.test(b)){ out = cutEnd(core,1) + 'я'; }
+  else { const prev = b.slice(-1); out = core + (/[гкхжчшщ]/.test(prev) ? 'и' : 'ы'); }
+  if(finalStress && !fixed){
+    // 阴性/中性：重音退回词干最后一个元音（страна́→стра́ны, окно́→о́кна）
+    // 阳性硬辅音：重音落到词尾
+    out = accLast ? out + AC
+        : (w.gender === 'm' && !/[ьй]$/.test(b)) ? accentAt(out, out.length-1)
+        : accentAt(out, out.length-2);
+  }
+  return out;
+}
+
+/* ============ 语法速查（按 Урок4–6 课件整理） ============ */
+function tb(rows){ return '<table class="tbl">' + rows.map(r=>'<tr><td class="k">'+r[0]+'</td><td class="v" style="font-family:inherit;font-size:13px">'+r[1]+'</td></tr>').join('') + '</table>'; }
+const GRAMMAR = [
+{id:'rod', t:'名词的性', ru:'Род существительных', les:'第4课', body:
+  tb([['阳性','-∅ гром, номер｜-й май, чай｜-ь слова́рь, буква́рь｜-а па́па, слуга́｜-я дя́дя'],
+      ['阴性','-а игра́, доска́｜-я семья́, статья́｜-ь дверь, дочь, тетра́дь'],
+      ['中性','-о окно́, сло́во｜-е мо́ре, со́лнце｜-ё враньё｜-мя вре́мя, и́мя, пла́мя'],
+      ['不变格','кино́, пальто́, пиани́но, кака́о, пюре́, фото́, метро́, жюри́, цуна́ми, интервью́']])
+  + '<p class="tip">易错：以 -ь 结尾的既可能是阳性（слова́рь）也可能是阴性（дверь, тетра́дь）；-а/-я 结尾多为阴性，但指男人的词是阳性：па́па, де́душка, дя́дя, мужчи́на。ко́фе 是阳性。</p>'},
+
+{id:'plur', t:'名词复数', ru:'Множественное число', les:'第5课', body:
+  tb([['阳性硬辅音','+ы　стол→столы́｜банк→ба́нки'],
+      ['г к х ж ч ш щ 后','+и　кни́га→кни́ги｜нож→ножи́｜каранда́ш→карандаши́｜врач→врачи́'],
+      ['阳性 -й / -ь','→ -и　музе́й→музе́и｜слова́рь→слова́ри'],
+      ['阴性 -а / -я','-ы/-и　ка́рта→ка́рты｜ру́чка→ру́чки｜неде́ля→неде́ли'],
+      ['阴性 -ь','→ -и　тетра́дь→тетра́ди｜дверь→две́ри'],
+      ['中性 -о / -е','-а / -я　окно́→о́кна｜сло́во→слова́｜мо́ре→моря́'],
+      ['-ия / -ие / -ий','-ии / -ия / -ии　аудито́рия→аудито́рии｜зда́ние→зда́ния｜планета́рий→планета́рии'],
+      ['-анин / -янин','→ -ане　граждани́н→гра́ждане｜англича́нин→англича́не'],
+      ['-мя','→ -мена　вре́мя→времена́｜и́мя→имена́']])
+  + '<p class="gmh">特殊复数（课件原表）</p>'
+  + tb([['-ья','друг→друзья́｜брат→бра́тья｜сын→сыновья́｜стул→сту́лья｜де́рево→дере́вья｜лист→ли́стья'],
+      ['重音后移','дом→дома́｜го́род→города́｜глаз→глаза́｜о́стров→острова́｜а́дрес→адреса́｜по́езд→поезда́｜па́спорт→паспорта́'],
+      ['不规则','сестра́→сёстры｜челове́к→лю́ди｜ребёнок→де́ти｜я́блоко→я́блоки｜у́хо→у́ши｜цвето́к→цветы́｜сосе́д→сосе́ди｜хозя́ин→хозя́ева｜мать→ма́тери｜дочь→до́чери'],
+      ['只用复数','брю́ки 裤子｜воро́та 大门｜очки́ 眼镜｜но́жницы 剪刀｜са́ни 雪橇｜духи́ 香水｜весы́ 秤｜де́ньги 钱｜часы́ 表｜кани́кулы 假期｜су́тки 昼夜｜ша́хматы 象棋']])},
+
+{id:'poss', t:'物主代词', ru:'Притяжательные местоимения', les:'第4–5课', body:
+  tb([['я','мой｜моя́｜моё｜мои́'],['ты','твой｜твоя́｜твоё｜твои́'],
+      ['он / оно','его́（四个性数都不变）'],['она́','её（不变）'],
+      ['мы','наш｜на́ша｜на́ше｜на́ши'],['вы','ваш｜ва́ша｜ва́ше｜ва́ши'],['они́','их（不变）']])
+  + '<p class="tip">选哪个只看后面名词的性数：мой стол / моя́ кни́га / моё молоко́ / мои́ кни́ги。疑问用 чей / чья / чьё / чьи：Чей э́то журна́л? Чья э́то кни́га?</p>'
+  + '<p class="ex" style="font-family:inherit">Это мой друг.　Это моя́ гру́ппа.　Это моё молоко́.　Это мои́ друзья́.</p>'},
+
+{id:'pron4', t:'人称代词第四格', ru:'Личные местоимения (вин.)', les:'第5课', body:
+  tb([['я → меня́','Меня́ зову́т Анто́н.'],['ты → тебя́','Как тебя́ зову́т?'],
+      ['он → его́','Его́ зову́т Ваня.'],['она́ → её','Её зову́т Ни́на.'],
+      ['мы → нас','Нас зову́т Ма́ша и Ни́на.'],['вы → вас','Как вас зову́т?'],
+      ['они́ → их','Их зову́т Ю́ра и Ви́тя.']])
+  + '<p class="tip">зову́т 永远是复数第三人称形式，不管前面是谁：Меня́ зову́т… / Как его́ зову́т? 动词 звать 属第一变位法。</p>'},
+
+{id:'verb1', t:'动词第一变位法', ru:'I спряжение', les:'第5–6课', body:
+  tb([['я','-у / -ю　чита́ю｜пишу́'],['ты','-ешь　чита́ешь｜пи́шешь'],
+      ['он, она́, оно́','-ет　чита́ет｜пи́шет'],['мы','-ем　чита́ем｜пи́шем'],
+      ['вы','-ете　чита́ете｜пи́шете'],['они́','-ут / -ют　чита́ют｜пи́шут']])
+  + '<p class="gmh">怎么判断：-ать / -еть / -ять 多为第一变位（знать, чита́ть, писа́ть, гуля́ть）；-ить 多为第二变位（люби́ть, гото́вить）。</p>'
+  + '<p class="gmh">变位时的语音交替（课件原表）</p>'
+  + tb([['с → ш','писа́ть → пишу́, пи́шешь, пи́шут'],
+      ['к → ч','пла́кать → пла́чу, пла́чешь, пла́чут'],
+      ['з → ж','ре́зать → ре́жу, ре́жешь, ре́жут'],
+      ['ск → щ','иска́ть → ищу́, и́щешь, и́щут'],
+      ['д → ж','е́здить → е́зжу, е́здишь, е́здят'],
+      ['б → бл','люби́ть → люблю́, лю́бишь, лю́бят'],
+      ['в → вл','гото́вить → гото́влю, гото́вишь, гото́вят']])
+  + '<p class="tip">交替之后，人称词尾按 -у / -ешь / -ут 走：я пишу́、ты пи́шешь、они́ пи́шут。</p>'},
+
+{id:'neg', t:'否定句', ru:'Отрицание', les:'第4课', body:
+  tb([['一般否定','— Это апте́ка?　— Нет, э́то не апте́ка. Э́то по́чта.'],
+      ['不是 A 而是 Б','— Нет, э́то не Москва́, а Омск.'],
+      ['简短回答','— Нет, э́то не моя́.（不必重复名词）'],
+      ['换主人','— Нет, не моя́ ла́мпа. Э́то его́ ла́мпа.']])
+  + '<p class="tip">не 紧贴被否定的词，后面直接跟名词，不加 это：Это не банк（不说 Это не есть банк）。</p>'},
+
+{id:'q', t:'疑问句', ru:'Вопросительные предложения', les:'第4–6课', body:
+  tb([['Что э́то?','Э́то банк.　问物'],['Кто э́то?','Э́то мой преподава́тель.　问人'],
+      ['Где …?','Метро́ там. Сле́ва.　问地点：тут, там, здесь, до́ма, сле́ва, спра́ва'],
+      ['Когда́ …?','Ле́том. Зимо́й. У́тром. Днём. Ве́чером.　问时间（第五格）'],
+      ['Чей / Чья / Чьё / Чьи?','Чья э́то кни́га?　问所属'],
+      ['Как кого́ зову́т?','Меня́ зову́т …　问名字'],
+      ['Ско́лько?','Ско́лько э́то сто́ит?']])
+  + '<p class="tip">语调别混：Это ко́мната.（调1 陈述）/ Что э́то?（调2 特指疑问）/ Это ко́мната?（调3 一般疑问）/ А ко́мната?（调4 对比）。</p>'},
+
+{id:'imp', t:'命令式与礼貌用语', ru:'Императив', les:'第4–5课', body:
+  tb([['Дай / Да́йте','给我　Да́йте, пожа́луйста, слова́рь.'],
+      ['Скажи́ / Скажи́те','说　Скажи́те, пожа́луйста, где метро́?'],
+      ['Покажи́ / Покажи́те','给…看　Покажи́те, пожа́луйста, э́то.'],
+      ['Позвони́ / Позвони́те','打电话　Позвони́те ве́чером.'],
+      ['Позови́ / Позови́те','叫…来　Позови́те его́, пожа́луйста.'],
+      ['Извини́ / Извини́те','对不起　Извини́те, э́то ваш слова́рь?'],
+      ['Посмотри́ / Посмотри́те','看　Посмотри́те! Кто э́то сле́ва?']])
+  + '<p class="tip">对陌生人、老师、长辈一律加 -те；对同学、朋友用单数形式。</p>'},
+
+{id:'phon', t:'语音规则', ru:'Фонетика', les:'第4–6课', body:
+  tb([['元音弱化','а/о 非重读 → [а]：гости́ница, проспе́кт, магази́н｜е → [и]：метро́, теа́тр, инжене́р｜э → [и]：эта́ж, экску́рсия'],
+      ['词尾清化','浊辅音在词尾读清：клуб [п], го́род [т], обе́д [т], эта́ж [ш], расска́з [с]'],
+      ['清浊同化','清+浊→浊：наш го́род, Вас зову́т｜浊+清→清：за́втра, авто́бус'],
+      ['чт / чн','что [што], что́бы；коне́чно, ску́чно, наро́чно, яи́чница → [шн]'],
+      ['тс / тся','учи́тся, пи́шется → [ца]'],
+      ['сч / зч / жч','сча́стье, расска́зчик, мужчи́на → [щ]'],
+      ['-го','его́, кого́, сего́дня → [во]/[ва]'],
+      ['гк','мя́гкий, лёгкий → [хк]'],
+      ['硬软辅音','软：+ я ё ю е и ь｜硬：+ а о у э ы｜永远硬：ж ш ц｜永远软：й ч щ'],
+      ['ц','ци 读 [цы]：цирк, ци́фра, центр']])
+  + '<p class="tip">这些规则只影响读音，不影响拼写——听写时按拼写写，别按读音写。</p>'},
+
+{id:'case', t:'六格速查', ru:'Падежи', les:'通用', body:
+  tb(CASEREF.map(function(x){ return [x[0]+' '+x[1], x[2] + '<br><span style="color:var(--mut);font-size:11.5px">'+x[3]+'</span>']; }))}
+];
+
+/* ============ 语法小测 ============ */
+let quiz = null;
+function pickOne(a){ return a[Math.floor(Math.random()*a.length)]; }
+function mix(a){ return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]); }
+function startQuiz(n){
+  const nouns = allWords().filter(w=>w.pos==='noun' && w.gender && w.ru);
+  const pl = nouns.filter(w=>pluralOf(w));
+  const verbs = allWords().filter(w=>w.pos==='verb' && w.pres);
+  const G = {m:0,f:1,n:2};
+  const makers = [
+    function(){ const w = pickOne(nouns);
+      return {q:'「'+w.ru+'」是哪个性？', sub:w.zh, opts:['阳性','阴性','中性'], ans:G[w.gender], tag:'语法·名词的性'}; },
+    function(){ const w = pickOne(pl), right = pluralOf(w), set = new Set([right]);
+      while(set.size < 4){ const o = pluralOf(pickOne(pl)); if(o) set.add(o); }
+      const opts = mix([...set]);
+      return {q:'「'+w.ru+'」的复数形式是？', sub:w.zh, opts:opts, ans:opts.indexOf(right), tag:'语法·名词复数'}; },
+    function(){ const w = pickOne(nouns);
+      return {q:'___ '+w.ru+'　（'+w.zh+'）', sub:'选合适的物主代词', opts:['мой','моя','моё','мои'], ans:G[w.gender], tag:'语法·物主代词'}; },
+    function(){ const w = pickOne(verbs);
+      const pr = [['я','我'],['ты','你'],['он','他/她'],['мы','我们'],['вы','你们'],['они','他们']];
+      const one = pickOne(pr), right = w.pres[one[0]];
+      const set = new Set([right]); pr.forEach(function(x){ if(w.pres[x[0]]) set.add(w.pres[x[0]]); });
+      const opts = mix([...set].slice(0,4));
+      return {q:w.ru+'　'+one[1]+'（'+one[0]+'）怎么变？', sub:'动词变位（含语音交替）', opts:opts, ans:opts.indexOf(right), tag:'语法·动词变位'}; }
+  ];
+  const qs = [];
+  for(let i=0;i<(n||10);i++) qs.push(makers[i%makers.length]());
+  quiz = {qs:qs, i:0, ok:0, picked:-1};
+  render();
+}
+function qPick(i){
+  if(!quiz || quiz.picked>=0) return;
+  quiz.picked = i;
+  const q = quiz.qs[quiz.i];
+  const ok = i === q.ans;
+  if(ok) quiz.ok++;
+  S.history.push({id:null, tags:[q.tag], ok:ok, t:Date.now()});
+  if(S.history.length>3000) S.history = S.history.slice(-2500);
+  save(); render();
+}
+function qNext(){
+  if(!quiz) return;
+  quiz.i++; quiz.picked = -1;
+  if(quiz.i >= quiz.qs.length){
+    const ok = quiz.ok, n = quiz.qs.length; quiz = null;
+    go('gram'); toast('小测完成：'+n+' 题，对 '+ok, 3600); return;
+  }
+  render();
+}
+function viewQuiz(){
+  const q = quiz.qs[quiz.i];
+  document.getElementById('htitle').textContent = "语法小测";
+  document.getElementById('hsub').textContent = (quiz.i+1)+' / '+quiz.qs.length;
+  const done = quiz.picked >= 0;
+  return '<p class="kicker">Урок 4–6 · 语法小测</p>'
+    + '<p class="h1" style="font-size:22px;line-height:1.35;margin-top:6px">'+esc(q.q)+'</p>'
+    + (q.sub ? '<p class="exz" style="margin-top:6px">'+esc(q.sub)+'</p>' : '')
+    + '<div class="qopts">' + q.opts.map(function(o,idx){
+        let cls = '';
+        if(done){ if(idx===q.ans) cls='right'; else if(idx===quiz.picked) cls='wrong'; }
+        return '<button class="qopt '+cls+'" data-q="'+idx+'">'+esc(o)+'</button>';
+      }).join('') + '</div>'
+    + (done
+        ? '<p class="tip">'+(quiz.picked===q.ans ? '✓ 对了' : '✗ 正确答案：'+esc(q.opts[q.ans]))+'</p>'
+          + '<button class="btn" id="qNext" style="margin-top:12px">'+(quiz.i+1===quiz.qs.length?'看结果':'下一题 →')+'</button>'
+        : '<button class="ghost" id="qQuit" style="margin-top:12px">退出小测</button>');
+}
+
 function viewGram(){
-  const st = tagStats();
+  if(quiz) return viewQuiz();
   document.getElementById('htitle').textContent = "语法";
-  document.getElementById('hsub').textContent = st.length ? st[0].tag+" 最弱" : "";
-  const rows = st.length ? st.map(x=>{
+  document.getElementById('hsub').textContent = "第4–6课";
+  const st = tagStats();
+  const rows = st.length ? st.map(function(x){
     const cls = x.acc<65?"low":x.acc<80?"mid":"";
-    return `<div class="krow"><span class="nm">${esc(x.tag)}</span><span class="meter"><b style="width:${x.acc}%"></b></span><span class="pct ${cls}">${x.acc}%</span></div>`;
-  }).join("") : `<p class="empty">练过 5 张卡后，这里会按考点排出你的正确率</p>`;
-  return `
-    <div class="sect" style="margin-top:4px"><h2>考点掌握度<em>按正确率从低到高</em></h2>${rows}</div>
-    <div class="sect"><h2>六格速查<em>问句 → 词尾</em></h2>
-      <table class="tbl">${CASEREF.map(([k,n,q,e])=>`<tr><td class="k">${k} ${n}</td><td class="v" style="font-family:inherit;font-size:12.5px">${q}<br><span style="color:var(--mut);font-size:11.5px">${e}</span></td></tr>`).join("")}</table>
-    </div>
-    <div class="sect"><h2>背词纪律<em>三句话</em></h2>
-      <p class="ex" style="font-family:inherit;font-size:13.5px;line-height:1.7">1. 名词必须连着六格一起记，只记主格等于没记。<br>2. 动词直接背「体对」：читать / прочитать，成对入脑。<br>3. 重音错了，元音就错了——跟读时跟重音，不跟字母。</p>
-    </div>`;
+    return '<div class="krow"><span class="nm">'+esc(x.tag)+'</span><span class="meter"><b style="width:'+x.acc+'%"></b></span><span class="pct '+cls+'">'+x.acc+'%</span></div>';
+  }).join("") : '<p class="empty">练过几张卡后，这里会按考点排出你的正确率</p>';
+  const gm = GRAMMAR.map(function(g,i){
+    return '<details class="gm"'+(i===0?' open':'')+'><summary><span class="gmt">'+g.t+'</span>'
+      + '<span class="gmr">'+g.ru+'</span><span class="gml">'+g.les+'</span></summary>'
+      + '<div class="gmb">'+g.body+'</div></details>';
+  }).join("");
+  return '<button class="btn" id="gramQuiz" style="margin-top:2px">语法小测 · 10 题</button>'
+    + '<p class="hintline" style="margin-top:8px;margin-bottom:14px">名词的性 / 名词复数 / 物主代词 / 动词变位，各 2–3 题</p>'
+    + '<div class="sect" style="margin-top:4px"><h2>语法速查<em>Урок 4–6 课件整理</em></h2>' + gm + '</div>'
+    + '<div class="sect" style="margin-top:16px"><h2>考点掌握度<em>按正确率从低到高</em></h2>' + rows + '</div>'
+    + '<div class="sect"><h2>背词纪律<em>三句话</em></h2>'
+    + '<p class="ex" style="font-family:inherit;font-size:13.5px;line-height:1.7">1. 名词必须连着六格和复数一起记，只记主格等于没记。<br>2. 动词直接背「体对」：чита́ть / прочита́ть，成对入脑。<br>3. 重音错了，元音就错了——跟读时跟重音，不跟字母。</p></div>';
 }
 
 /* ============ 渲染：词库 ============ */
@@ -767,7 +1020,7 @@ function render(){
     if(tab==="home") v.innerHTML = viewHome();
     else if(tab==="dict") v.innerHTML = viewDict();
     else if(tab==="dictation") v.innerHTML = viewDictation();
-    else if(tab==="gram") v.innerHTML = viewGram();
+    else if(tab==="gram") v.innerHTML = (quiz ? viewQuiz() : viewGram());
     else if(tab==="me") v.innerHTML = viewMe();
     if(tab!=="review"){ document.getElementById('htitle').textContent = TITLES[tab]||"Русский"; }
   }
@@ -806,6 +1059,10 @@ function bind(){
   document.getElementById('trainLesson')?.addEventListener('click', ()=>startSession("all", dictLesson));
 
   /* —— 听写 —— */
+  document.getElementById('gramQuiz')?.addEventListener('click', ()=>startQuiz(10));
+  document.querySelectorAll('.qopt').forEach(b=>b.addEventListener('click', ()=>qPick(+b.dataset.q)));
+  document.getElementById('qNext')?.addEventListener('click', qNext);
+  document.getElementById('qQuit')?.addEventListener('click', ()=>{ quiz=null; render(); });
   document.getElementById('dicStartAll')?.addEventListener('click', ()=>startDictation(0, 20));
   document.getElementById('dicStartPick')?.addEventListener('click', openDicSheet);
   document.getElementById('dicPlay')?.addEventListener('click', dicSay);
